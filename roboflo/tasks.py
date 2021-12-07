@@ -2,7 +2,7 @@ import numpy as np
 from math import ceil
 import json
 from copy import deepcopy
-from helpers import generate_id
+from roboflo.helpers import generate_id
 from abc import ABC, abstractmethod
 
 

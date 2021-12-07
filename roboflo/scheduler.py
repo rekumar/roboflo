@@ -1,7 +1,7 @@
 from ortools.sat.python import cp_model
 import matplotlib.pyplot as plt
 import numpy as np
-from tasks import Task, Transition, Protocol, Worker, System
+from roboflo.tasks import Task, Transition, Protocol, Worker, System
 
 ### Task Scheduler
 class Scheduler:
