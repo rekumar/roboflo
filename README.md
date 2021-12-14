@@ -9,6 +9,8 @@ Task scheduler for any system with coordinated workers. The original use case is
 
 Happy robot-ing!
 
+
+PS - shoutout to [Taskpacker](https://github.com/Edinburgh-Genome-Foundry/Taskpacker), from which I drew heavy inspiration. `roboflo` carries much of the design philosophy from `Taskpacker`, but uses only Python packages (the backend is Google ORTools as opposed to Numberjack, which can be difficult to install especially on Windows). `roboflo` also introduces `Transitions`, which define a finite state machine, as a critical component in the workflow under the assumption that many robotic platforms involve workers whose specific jobs are to move things between other workers.
 <!-- 
 
 # Examples
