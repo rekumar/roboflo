@@ -3,7 +3,7 @@ from math import ceil
 import json
 from copy import deepcopy
 from roboflo.helpers import generate_id
-from abc import ABC, abstractmethod
+from abc import ABC
 
 
 class Task(ABC):
@@ -176,69 +176,3 @@ class Protocol:
 
     def __hash__(self):
         return hash(self.__key())
-
-
-class System:
-    def __init__(
-        self,
-        workers,
-        transitions,
-        starting_worker: Worker,
-        ending_worker: Worker = None,
-    ):
-        self.workers = workers
-        if starting_worker not in self.workers:
-            raise ValueError("The starting Worker must be present in the workers list!")
-        self.starting_worker = starting_worker
-        self.ending_worker = ending_worker
-        self.transitions = {w: {} for w in self.workers}
-        for t in transitions:
-            self.transitions[t.source][t.destination] = t
-
-    def __generate_transition_task(
-        self, task: Task, source: Worker, destination: Worker
-    ):
-        if source not in self.transitions:
-            raise ValueError(
-                f"{source} is not a valid worker in this system! Error thrown during transition for {task}"
-            )
-        if destination not in self.transitions[source]:
-            raise ValueError(
-                f"No transition task defined from {source} to {destination}!"
-            )
-        transition_task = deepcopy(self.transitions[source][destination])
-        transition_task.immediate = task.immediate
-        transition_task.precedent = task.precedent
-        return transition_task
-
-    def generate_protocol(self, name: str, worklist: list, min_start: int = 0) -> list:
-        wl = deepcopy(worklist)
-        for task0, task1 in zip(wl, wl[1:]):
-            task1.precedent = task0  # task1 is preceded by task0
-
-        protocol_worklist = []
-        source = self.starting_worker
-        for task in wl:
-            destination = task.workers[0]
-            if source != destination:
-                transition_task = self.__generate_transition_task(
-                    task, source, destination
-                )
-                protocol_worklist.append(transition_task)
-                task.precedent = transition_task
-            protocol_worklist.append(task)
-            source = destination  # update location for next task
-        if self.ending_worker is not None:
-            if destination != self.ending_worker:
-                transition_task = self.__generate_transition_task(
-                    task, destination, self.ending_worker
-                )
-                transition_task.precedent = protocol_worklist[-1]
-                protocol_worklist.append(transition_task)  # sample ends at storage
-
-        min_start = ceil(min_start)  # must be integer
-        for task in protocol_worklist:
-            task.min_start = min_start
-            min_start += task.duration
-
-        return Protocol(name=name, worklist=protocol_worklist)

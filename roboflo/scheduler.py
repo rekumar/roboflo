@@ -1,7 +1,7 @@
 from ortools.sat.python import cp_model
 import matplotlib.pyplot as plt
 import numpy as np
-from roboflo.tasks import Task, Transition, Protocol, Worker, System
+from roboflo.tasks import Transition
 
 ### Task Scheduler
 class Scheduler:
@@ -9,12 +9,11 @@ class Scheduler:
         self,
         system,
         protocols,
-        enforce_protocol_order=False,
     ):
         self.system = system
-        self.enforce_protocol_order = enforce_protocol_order
         self.tasklist = []
         self.protocols = []
+        self._num_protocols_on_last_solve = 0
         self.add_protocols(protocols)
 
     def add_protocols(self, protocols):
@@ -24,7 +23,7 @@ class Scheduler:
         ]
         self.horizon = int(sum([t.duration for t in self.tasklist]))
 
-    def _initialize_model(self):
+    def _initialize_model(self, enforce_protocol_order):
         self.model = cp_model.CpModel()
         ending_variables = []
         # machine_intervals = {w: [] for w in self.system.workers}
@@ -87,7 +86,7 @@ class Scheduler:
             self.model.AddReservoirConstraint(**kws)
 
         ### Force sample order if flagged
-        if self.enforce_protocol_order:
+        if enforce_protocol_order:
             for protocol, preceding_protocol in zip(self.protocols[1:], self.protocols):
                 self.model.Add(
                     protocol.worklist[0].start_var
@@ -98,8 +97,13 @@ class Scheduler:
         self.model.AddMaxEquality(objective_var, ending_variables)
         self.model.Minimize(objective_var)
 
-    def solve(self, solve_time=5):
-        self._initialize_model()
+    def solve(self, solve_time=5, enforce_protocol_order=False):
+        if len(self.protocols) == self._num_protocols_on_last_solve:
+            print(
+                f"previous solution still valid - add new protocols before solving again"
+            )
+            return
+        self._initialize_model(enforce_protocol_order=enforce_protocol_order)
         self.solver = cp_model.CpSolver()
         self.solver.parameters.max_time_in_seconds = solve_time
         self.solver.parameters.num_search_workers = 0  # use all cores
@@ -113,6 +117,7 @@ class Scheduler:
                 task.start = self.solver.Value(task.start_var)
                 task.end = self.solver.Value(task.end_var)
                 task._solution_count += 1
+        self._num_protocols_on_last_solve = len(self.protocols)
         # self.plot_solution()
 
     def get_tasklist(self, only_recent=False):
@@ -155,7 +160,7 @@ class Scheduler:
                         x,
                         y,
                         color=color,
-                        alpha=(max(1 - (t._solution_count - 1) / 5, 0.4)),
+                        # alpha=(max(1 - (t._solution_count - 1) / 5, 0.4)),
                     )
 
         plt.yticks(
