@@ -63,14 +63,13 @@ class Task(ABC):
         out = {
             "name": self.name,
             "start": self.start,
-            "task": self.task,
             "id": self.id,
             "details": self.generate_details(),
         }
         if self.precedent is None:
             out["precedent"] = None
         else:
-            out["precedent"] = self.precedent.taskid
+            out["precedent"] = self.precedent.id
 
         return out
 
