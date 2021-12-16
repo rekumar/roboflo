@@ -17,10 +17,9 @@ class Scheduler:
         self.add_protocols(protocols)
 
     def add_protocols(self, protocols):
-        self.protocols += [p for p in protocols if p not in self.protocols]
-        self.tasklist += [
-            task for p in protocols for task in p.worklist if task not in self.tasklist
-        ]
+        new_protocols = [p for p in protocols if p not in self.protocols]
+        self.protocols += new_protocols
+        self.tasklist += [task for p in new_protocols for task in p.worklist]
         self.horizon = int(sum([t.duration for t in self.tasklist]))
 
     def _initialize_model(self, enforce_protocol_order):

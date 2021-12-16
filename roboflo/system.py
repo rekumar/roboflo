@@ -9,9 +9,22 @@ class System:
         self,
         workers,
         transitions,
-        starting_worker: Worker,
+        starting_worker: Worker = None,
         ending_worker: Worker = None,
     ):
+        """Facilitate scheduling of tasks that move between workers
+
+        Args:
+            workers (list): list of Worker objects
+            transitions (list): list of Transition objects that define moves between Worker's
+            starting_worker (Worker, optional): Default Worker at which protocols begin. Defaults to None.
+            ending_worker (Worker, optional): Default Worker at which protocols end. Defaults to None.
+
+        Raises:
+            ValueError: [description]
+        """
+        if len(set(workers)) != len(workers):
+            raise ValueError("All workers must have a unique name!")
         self.workers = workers
         if starting_worker not in self.workers:
             raise ValueError("The starting Worker must be present in the workers list!")
@@ -42,7 +55,12 @@ class System:
         return transition_task
 
     def generate_protocol(
-        self, worklist: list, name: str = None, min_start: int = 0
+        self,
+        worklist: list,
+        name: str = None,
+        min_start: int = 0,
+        starting_worker: Worker = None,
+        ending_worker: Worker = None,
     ) -> list:
         if name is None:
             name = f"sample{self._protocol_index}"
@@ -55,7 +73,18 @@ class System:
             task1.precedent = task0  # task1 is preceded by task0
 
         protocol_worklist = []
-        source = self.starting_worker
+        if starting_worker is None:
+            source = self.starting_worker
+        else:
+            source = starting_worker
+        if source is None:
+            raise ValueError(
+                "No default starting worker defined for this System, so starting_worker must be specified in .generate_protocol!"
+            )
+
+        if ending_worker is None:
+            ending_worker = self.ending_worker
+
         for task in wl:
             destination = task.workers[0]
             if source != destination:
@@ -66,10 +95,10 @@ class System:
                 task.precedent = transition_task
             protocol_worklist.append(task)
             source = destination  # update location for next task
-        if self.ending_worker is not None:
-            if destination != self.ending_worker:
+        if ending_worker is not None:
+            if destination != ending_worker:
                 transition_task = self.__generate_transition_task(
-                    task, destination, self.ending_worker
+                    task, destination, ending_worker
                 )
                 transition_task.precedent = protocol_worklist[-1]
                 protocol_worklist.append(transition_task)  # sample ends at storage
