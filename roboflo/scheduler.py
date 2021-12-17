@@ -36,14 +36,6 @@ class Scheduler:
         self.model = cp_model.CpModel()
         ending_variables = []
         machine_intervals = {w: [] for w in self.system.workers}
-        reservoirs = {
-            w: {"times": [], "demands": [], "min_level": 0, "max_level": w.capacity}
-            for w in self.system.workers
-        }
-        for w in self.system.workers:
-            if w.initial_fill > 0:
-                reservoirs[w]["times"].append(self.model.NewConstant(0))
-                reservoirs[w]["demands"].append(w.initial_fill)
 
         ### Task Constraints
         for task in self.tasklist:
@@ -92,9 +84,7 @@ class Scheduler:
                 # TODO variable capacity for tasks
 
         # ### Worker Constraints
-        # for kws in reservoirs.values():
-        #     if len(kws["times"]) > 0:
-        #         self.model.AddReservoirConstraint(**kws)
+
         for w in self.system.workers:
             intervals = machine_intervals[w]
             if w.capacity > 1:
@@ -125,15 +115,7 @@ class Scheduler:
                         )
                         spanning_tasks[current_worker].append(interval)
                         current_worker = None
-            # for t0, t1, t2 in zip(tasks, tasks[1:], tasks[2:]):
-            #     if not isinstance(t1, Transition) and t1.workers[0].capacity == 1:
-            #         if t1.name not in spanning_tasks:
-            #             spanning_tasks[t1.name] = []
-            # duration = self.model.NewIntVar(0, self.horizon, "duration")
-            # interval = self.model.NewIntervalVar(
-            #     t0.start_var, duration, t2.end_var, "sampleinterval"
-            # )
-            # spanning_tasks[t1.name].append(interval)
+
         for intervals in spanning_tasks.values():
             self.model.AddNoOverlap(intervals)
 
