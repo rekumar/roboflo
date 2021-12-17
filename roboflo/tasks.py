@@ -96,7 +96,7 @@ class Worker(ABC):
         return f"<Worker: {self.name}>"
 
     def __eq__(self, other):
-        return (type(self) == type(other)) and (self.name == other.name)
+        return isinstance(other, self.__class__) and (self.name == other.name)
 
 
 class Transition(Task):
@@ -121,6 +121,9 @@ class Transition(Task):
             immediate=immediate,
             details=details,
         )
+
+    def generate_details(self):
+        return {"source": self.source.name, "destination": self.destination.name}
 
     def __repr__(self):
         return f"<Transition: {self.name}, runs from {self.start} - {self.end}>"

@@ -20,7 +20,17 @@ class Scheduler:
         new_protocols = [p for p in protocols if p not in self.protocols]
         self.protocols += new_protocols
         self.tasklist += [task for p in new_protocols for task in p.worklist]
-        self.horizon = int(sum([t.duration for t in self.tasklist]))
+        all_min_starts = [t.min_start for t in self.tasklist]
+        if len(all_min_starts) > 0:
+            overall_min_start = min(all_min_starts)
+        else:
+            overall_min_start = 0
+        self.horizon = int(sum([t.duration for t in self.tasklist]) + overall_min_start)
+
+    def clear_protocols(self):
+        self._num_protocols_on_last_solve = 0
+        self.protocols = []
+        self.tasklist = []
 
     def _initialize_model(self, enforce_protocol_order):
         self.model = cp_model.CpModel()
@@ -35,7 +45,6 @@ class Scheduler:
                 reservoirs[w]["times"].append(self.model.NewConstant(0))
                 reservoirs[w]["demands"].append(w.initial_fill)
 
-        # reservoirs = {w: w.capacity for w in self.system.workers}
         ### Task Constraints
         for task in self.tasklist:
             if not np.isnan(task.end):

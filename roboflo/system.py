@@ -34,8 +34,7 @@ class System:
         for t in transitions:
             self.transitions[t.source][t.destination] = t
 
-        self._protocol_index = 0
-        self._protocol_names = []
+        self._protocols = {}
         self.scheduler = Scheduler(system=self, protocols=[])
 
     def __generate_transition_task(
@@ -63,8 +62,9 @@ class System:
         ending_worker: Worker = None,
     ) -> list:
         if name is None:
-            name = f"sample{self._protocol_index}"
-        if name in self._protocol_names:
+            idx = len(self._protocols)
+            name = f"sample{idx}"
+        if name in self._protocols:
             raise ValueError(
                 f'Protocol by the name "{name}" already exists - please select a unique name!'
             )
@@ -109,7 +109,6 @@ class System:
             min_start += task.duration
         p = Protocol(name=name, worklist=protocol_worklist)
 
-        self._protocol_names.append(name)
-        self._protocol_index += 1
+        self._protocols[name] = p
         self.scheduler.add_protocols([p])
         return p
