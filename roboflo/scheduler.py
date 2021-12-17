@@ -2,6 +2,7 @@ from ortools.sat.python import cp_model
 import matplotlib.pyplot as plt
 import numpy as np
 from roboflo.tasks import Transition
+import itertools as itt
 
 ### Task Scheduler
 class Scheduler:
@@ -13,30 +14,67 @@ class Scheduler:
         self.system = system
         self.tasklist = []
         self.protocols = []
-        self._num_protocols_on_last_solve = 0
+        self._num_tasks_on_last_solve = 0
         self.enforce_protocol_order = False
         self.add_protocols(protocols)
 
     def add_protocols(self, protocols):
         new_protocols = [p for p in protocols if p not in self.protocols]
         self.protocols += new_protocols
-        self.tasklist += [task for p in new_protocols for task in p.worklist]
-        all_min_starts = [t.min_start for t in self.tasklist]
-        if len(all_min_starts) > 0:
-            overall_min_start = min(all_min_starts)
-        else:
-            overall_min_start = 0
-        self.horizon = int(sum([t.duration for t in self.tasklist]) + overall_min_start)
 
     def clear_protocols(self):
-        self._num_protocols_on_last_solve = 0
+        self._num_tasks_on_last_solve = 0
         self.protocols = []
         self.tasklist = []
+
+    def _build_tasklist(self, breakpoint=None):
+        self.tasklist = []
+        for p in self.protocols:
+
+            taskit = iter(p.worklist)
+            reached_breakpoint = False
+            while not reached_breakpoint:
+                task = next(taskit, None)
+                if task is None:
+                    break
+                self.tasklist.append(task)
+                if breakpoint is not None and task == breakpoint:
+                    reached_breakpoint = True
+            still_immediate = True
+            for task in taskit:
+                if not task.immediate:
+                    still_immediate = False
+                if still_immediate or not np.isnan(
+                    task.start
+                ):  # immediate tasks left, or task is already solved
+                    self.tasklist.append(task)
+
+            # for task in p.worklist:
+            #     if not found_breakpoint:
+
+            #     if found_breakpoint:
+            #         if not np.isnan(task.start): # ie we already solved this task
+            #             self.tasklist.append(task)
+            #     else:
+            #         self.tasklist.append(task)
+
+            #     if (not found_breakpoint) or (not np.isnan(task.start)):
+            #         self.tasklist.append(task)
+            #     if breakpoint is not None:
+            #         if task == breakpoint:
+            #             found_breakpoint = True
+            #             breakpoint_task = task
 
     def _initialize_model(self):
         self.model = cp_model.CpModel()
         ending_variables = []
         machine_intervals = {w: [] for w in self.system.workers}
+        all_min_starts = [t.min_start for t in self.tasklist]
+        if len(all_min_starts) > 0:
+            overall_min_start = min(all_min_starts)
+        else:
+            overall_min_start = 0
+        horizon = int(sum([t.duration for t in self.tasklist]) + overall_min_start)
 
         ### Task Constraints
         for task in self.tasklist:
@@ -44,7 +82,7 @@ class Scheduler:
                 task.end_var = self.model.NewConstant(task.end)
             else:
                 task.end_var = self.model.NewIntVar(
-                    task.duration + task.min_start, self.horizon, "end " + str(task.id)
+                    task.duration + task.min_start, horizon, "end " + str(task.id)
                 )
                 ending_variables.append(task.end_var)
 
@@ -57,7 +95,7 @@ class Scheduler:
                     task.start_var = self.model.NewConstant(task.start)
                 else:
                     task.start_var = self.model.NewIntVar(
-                        task.min_start, self.horizon, "start " + str(task.id)
+                        task.min_start, horizon, "start " + str(task.id)
                     )
                     if task.precedent is not None:
                         self.model.Add(task.start_var >= task.precedent.end_var)
@@ -71,18 +109,6 @@ class Scheduler:
             )
             for w in task.workers:
                 machine_intervals[w].append(interval_var)
-
-            if isinstance(task, Transition):
-                emptying_reservoir = reservoirs[task.source]
-                filling_reservoir = reservoirs[task.destination]
-
-                emptying_reservoir["times"].append(task.end_var)
-                emptying_reservoir["demands"].append(-1)
-
-                filling_reservoir["times"].append(task.start_var)
-                filling_reservoir["demands"].append(1)
-
-                # TODO variable capacity for tasks
 
         # ### Worker Constraints
 
@@ -101,6 +127,8 @@ class Scheduler:
             t1 = None
             current_worker = None
             for task in protocol.worklist:
+                if task not in self.tasklist:
+                    continue
                 if not isinstance(task, Transition):
                     continue
                 if current_worker is None:
@@ -110,7 +138,7 @@ class Scheduler:
                 else:
                     if task.source == current_worker:
                         t1 = task
-                        duration = self.model.NewIntVar(0, self.horizon, "duration")
+                        duration = self.model.NewIntVar(0, horizon, "duration")
                         interval = self.model.NewIntervalVar(
                             t0.start_var, duration, t1.end_var, "sampleinterval"
                         )
@@ -128,31 +156,44 @@ class Scheduler:
                     > preceding_protocol.worklist[0].start_var
                 )
 
-        objective_var = self.model.NewIntVar(0, self.horizon, "makespan")
+        objective_var = self.model.NewIntVar(0, horizon, "makespan")
         self.model.AddMaxEquality(objective_var, ending_variables)
         self.model.Minimize(objective_var)
 
-    def solve(self, solve_time=5):
-        if len(self.protocols) == self._num_protocols_on_last_solve:
+    def _solve_once(self, solve_time):
+        self._initialize_model()
+        if len(self.tasklist) == self._num_tasks_on_last_solve:
             print(
                 f"previous solution still valid - add new protocols before solving again"
             )
             return
-        self._initialize_model(enforce_protocol_order=enforce_protocol_order)
         self.solver = cp_model.CpSolver()
         self.solver.parameters.max_time_in_seconds = solve_time
         self.solver.parameters.num_search_workers = 0  # use all cores
-        status = self.solver.Solve(self.model)
+        self.solver.Solve(self.model)
 
+        taskidlist = [task.id for task in self.tasklist]
+        for s in self.protocols:
+            for task in s.worklist:
+                if task.id in taskidlist:
+                    task.start = self.solver.Value(task.start_var)
+                    task.end = self.solver.Value(task.end_var)
+                    task._solution_count += 1
+        self._num_tasks_on_last_solve = len(self.tasklist)
+
+    def solve(self, solve_time=5, breakpoints=[]):
+        solvetime_each = solve_time / (1 + len(breakpoints))
+        for bp in breakpoints:
+            self._build_tasklist(breakpoint=bp)
+            self._solve_once(solve_time=solvetime_each)
+            print(f"intermediate solution status: {self.solver.StatusName()}")
+
+        self._build_tasklist()
+        self._solve_once(solve_time=solvetime_each)
+        print(len(self.tasklist))
         print(f"solution status: {self.solver.StatusName()}")
         # if status in [3, 4]:
         #     return
-        for s in self.protocols:
-            for task in s.worklist:
-                task.start = self.solver.Value(task.start_var)
-                task.end = self.solver.Value(task.end_var)
-                task._solution_count += 1
-        self._num_protocols_on_last_solve = len(self.protocols)
         # self.plot_solution()
 
     def get_tasklist(self, only_recent=False):
