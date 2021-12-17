@@ -35,7 +35,7 @@ class Scheduler:
     def _initialize_model(self, enforce_protocol_order):
         self.model = cp_model.CpModel()
         ending_variables = []
-        # machine_intervals = {w: [] for w in self.system.workers}
+        machine_intervals = {w: [] for w in self.system.workers}
         reservoirs = {
             w: {"times": [], "demands": [], "min_level": 0, "max_level": w.capacity}
             for w in self.system.workers
@@ -47,7 +47,7 @@ class Scheduler:
 
         ### Task Constraints
         for task in self.tasklist:
-            if not np.isnan(task.end):
+            if not np.isnan(task.end):  # ie we already solved this task
                 task.end_var = self.model.NewConstant(task.end)
             else:
                 task.end_var = self.model.NewIntVar(
@@ -76,8 +76,8 @@ class Scheduler:
                 task.end_var,
                 "interval " + str(task.id),
             )
-            # for w in task.workers:
-            #     machine_intervals[w].append(interval_var)
+            for w in task.workers:
+                machine_intervals[w].append(interval_var)
 
             if isinstance(task, Transition):
                 emptying_reservoir = reservoirs[task.source]
@@ -89,9 +89,35 @@ class Scheduler:
                 filling_reservoir["times"].append(task.start_var)
                 filling_reservoir["demands"].append(1)
 
-        ### Worker Constraints
-        for kws in reservoirs.values():
-            self.model.AddReservoirConstraint(**kws)
+                # TODO variable capacity for tasks
+
+        # ### Worker Constraints
+        # for kws in reservoirs.values():
+        #     if len(kws["times"]) > 0:
+        #         self.model.AddReservoirConstraint(**kws)
+        for w in self.system.workers:
+            intervals = machine_intervals[w]
+            if w.capacity > 1:
+                demands = [1 for _ in machine_intervals[w]]
+                self.model.AddCumulative(intervals, demands, w.capacity)
+            else:
+                self.model.AddNoOverlap(intervals)
+
+        ### Force sequential tasks to preserve order even if not immediate
+        spanning_tasks = {}
+        for protocol in self.protocols:
+            tasks = protocol.worklist
+            for t0, t1, t2 in zip(tasks, tasks[1:], tasks[2:]):
+                if not isinstance(t1, Transition) and t1.workers[0].capacity == 1:
+                    if t1.name not in spanning_tasks:
+                        spanning_tasks[t1.name] = []
+                    duration = self.model.NewIntVar(0, self.horizon, "duration")
+                    interval = self.model.NewIntervalVar(
+                        t0.start_var, duration, t2.end_var, "sampleinterval"
+                    )
+                    spanning_tasks[t1.name].append(interval)
+        for intervals in spanning_tasks.values():
+            self.model.AddNoOverlap(intervals)
 
         ### Force sample order if flagged
         if enforce_protocol_order:
