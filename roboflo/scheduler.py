@@ -104,18 +104,36 @@ class Scheduler:
                 self.model.AddNoOverlap(intervals)
 
         ### Force sequential tasks to preserve order even if not immediate
-        spanning_tasks = {}
+        spanning_tasks = {w: [] for w in self.system.workers if w.capacity == 1}
         for protocol in self.protocols:
-            tasks = protocol.worklist
-            for t0, t1, t2 in zip(tasks, tasks[1:], tasks[2:]):
-                if not isinstance(t1, Transition) and t1.workers[0].capacity == 1:
-                    if t1.name not in spanning_tasks:
-                        spanning_tasks[t1.name] = []
-                    duration = self.model.NewIntVar(0, self.horizon, "duration")
-                    interval = self.model.NewIntervalVar(
-                        t0.start_var, duration, t2.end_var, "sampleinterval"
-                    )
-                    spanning_tasks[t1.name].append(interval)
+            t0 = None
+            t1 = None
+            current_worker = None
+            for task in protocol.worklist:
+                if not isinstance(task, Transition):
+                    continue
+                if current_worker is None:
+                    if task.destination.capacity == 1:
+                        current_worker = task.destination
+                        t0 = task
+                else:
+                    if task.source == current_worker:
+                        t1 = task
+                        duration = self.model.NewIntVar(0, self.horizon, "duration")
+                        interval = self.model.NewIntervalVar(
+                            t0.start_var, duration, t1.end_var, "sampleinterval"
+                        )
+                        spanning_tasks[current_worker].append(interval)
+                        current_worker = None
+            # for t0, t1, t2 in zip(tasks, tasks[1:], tasks[2:]):
+            #     if not isinstance(t1, Transition) and t1.workers[0].capacity == 1:
+            #         if t1.name not in spanning_tasks:
+            #             spanning_tasks[t1.name] = []
+            # duration = self.model.NewIntVar(0, self.horizon, "duration")
+            # interval = self.model.NewIntervalVar(
+            #     t0.start_var, duration, t2.end_var, "sampleinterval"
+            # )
+            # spanning_tasks[t1.name].append(interval)
         for intervals in spanning_tasks.values():
             self.model.AddNoOverlap(intervals)
 
