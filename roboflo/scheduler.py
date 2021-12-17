@@ -14,6 +14,7 @@ class Scheduler:
         self.tasklist = []
         self.protocols = []
         self._num_protocols_on_last_solve = 0
+        self.enforce_protocol_order = False
         self.add_protocols(protocols)
 
     def add_protocols(self, protocols):
@@ -32,7 +33,7 @@ class Scheduler:
         self.protocols = []
         self.tasklist = []
 
-    def _initialize_model(self, enforce_protocol_order):
+    def _initialize_model(self):
         self.model = cp_model.CpModel()
         ending_variables = []
         machine_intervals = {w: [] for w in self.system.workers}
@@ -120,7 +121,7 @@ class Scheduler:
             self.model.AddNoOverlap(intervals)
 
         ### Force sample order if flagged
-        if enforce_protocol_order:
+        if self.enforce_protocol_order:
             for protocol, preceding_protocol in zip(self.protocols[1:], self.protocols):
                 self.model.Add(
                     protocol.worklist[0].start_var
@@ -131,7 +132,7 @@ class Scheduler:
         self.model.AddMaxEquality(objective_var, ending_variables)
         self.model.Minimize(objective_var)
 
-    def solve(self, solve_time=5, enforce_protocol_order=False):
+    def solve(self, solve_time=5):
         if len(self.protocols) == self._num_protocols_on_last_solve:
             print(
                 f"previous solution still valid - add new protocols before solving again"
