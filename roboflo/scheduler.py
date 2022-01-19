@@ -190,7 +190,6 @@ class Scheduler:
 
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)
-        print(len(self.tasklist))
         print(f"solution status: {self.solver.StatusName()}")
         # if status in [3, 4]:
         #     return
