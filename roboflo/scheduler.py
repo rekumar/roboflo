@@ -71,10 +71,10 @@ class Scheduler:
         machine_intervals = {w: [] for w in self.system.workers}
         all_min_starts = [t.min_start for t in self.tasklist]
         if len(all_min_starts) > 0:
-            overall_min_start = min(all_min_starts)
+            latest_min_start = max(all_min_starts)
         else:
-            overall_min_start = 0
-        horizon = int(sum([t.duration for t in self.tasklist]) + overall_min_start)
+            latest_min_start = 0
+        horizon = int(sum([t.duration for t in self.tasklist]) + latest_min_start)
 
         ### Task Constraints
         for task in self.tasklist:
@@ -257,3 +257,4 @@ class Scheduler:
         ax2.set_xlim([x / 60 for x in xlim0])
         ax2.set_xlabel("Time (hours)")
         plt.sca(ax)
+        plt.show()
