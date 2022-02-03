@@ -257,4 +257,4 @@ class Scheduler:
         ax2.set_xlim([x / 60 for x in xlim0])
         ax2.set_xlabel("Time (hours)")
         plt.sca(ax)
-        plt.show()
+        # plt.show()
