@@ -27,10 +27,9 @@ class Scheduler:
         self.protocols = []
         self.tasklist = []
 
-    def _build_tasklist(self, breakpoint=None):
+    def _build_tasklist(self, breakpoints=[]):
         self.tasklist = []
         for p in self.protocols:
-
             taskit = iter(p.worklist)
             reached_breakpoint = False
             while not reached_breakpoint:
@@ -38,7 +37,7 @@ class Scheduler:
                 if task is None:
                     break
                 self.tasklist.append(task)
-                if breakpoint is not None and task == breakpoint:
+                if task in breakpoints:
                     reached_breakpoint = True
             still_immediate = True
             for task in taskit:
@@ -125,25 +124,29 @@ class Scheduler:
         for protocol in self.protocols:
             t0 = None
             t1 = None
-            current_worker = None
-            for task in protocol.worklist:
-                if task not in self.tasklist:
+            for i, task0 in enumerate(protocol.worklist):
+                if task0 not in self.tasklist:
                     continue
-                if not isinstance(task, Transition):
+                if not isinstance(task0, Transition):
                     continue
-                if current_worker is None:
-                    if task.destination.capacity == 1:
-                        current_worker = task.destination
-                        t0 = task
-                else:
-                    if task.source == current_worker:
-                        t1 = task
-                        duration = self.model.NewIntVar(0, horizon, "duration")
-                        interval = self.model.NewIntervalVar(
-                            t0.start_var, duration, t1.end_var, "sampleinterval"
-                        )
-                        spanning_tasks[current_worker].append(interval)
-                        current_worker = None
+                if task0.destination.capacity == 1:
+                    for task1 in protocol.worklist[i:]:
+                        if task1 not in self.tasklist:
+                            continue
+                        if not isinstance(task1, Transition):
+                            continue
+                        if (
+                            task0.destination == task1.source
+                        ):  # ie task1 is a transition off of the unit-capacity station
+                            duration = self.model.NewIntVar(0, horizon, "duration")
+                            interval = self.model.NewIntervalVar(
+                                task0.start_var,
+                                duration,
+                                task1.end_var,
+                                "sampleinterval",
+                            )
+                            spanning_tasks[task0.destination].append(interval)
+                            break
 
         for intervals in spanning_tasks.values():
             self.model.AddNoOverlap(intervals)
@@ -183,10 +186,10 @@ class Scheduler:
 
     def solve(self, solve_time=5, breakpoints=[]):
         solvetime_each = solve_time / (1 + len(breakpoints))
-        for bp in breakpoints:
-            self._build_tasklist(breakpoint=bp)
-            self._solve_once(solve_time=solvetime_each)
-            print(f"intermediate solution status: {self.solver.StatusName()}")
+        # for bp in breakpoints:
+        self._build_tasklist(breakpoints=breakpoints)
+        self._solve_once(solve_time=solvetime_each)
+        print(f"intermediate solution status: {self.solver.StatusName()}")
 
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)

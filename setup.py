@@ -30,12 +30,13 @@ setup(
     long_description_content_type="text/markdown",
     author="Rishi Kumar",
     author_email="rek010@eng.ucsd.edu",
-    download_url="https://github.com/rekumar/roboflo",
+    # download_url="https://github.com/rekumar/roboflo",
     license="MIT",
     install_requires=[
         "numpy",
         "ortools",
         "matplotlib",
+        "json",
     ],
     # extras_require={
     #     'model_saving': ['h5py'],
