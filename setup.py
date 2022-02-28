@@ -24,7 +24,7 @@ with open(os.path.join(this_dir, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="roboflo",
-    version="0.1",
+    version="0.1.1",
     description="Scheduler for automation tasks that involve multiple stations/workers.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -36,7 +36,6 @@ setup(
         "numpy",
         "ortools",
         "matplotlib",
-        "json",
     ],
     # extras_require={
     #     'model_saving': ['h5py'],
