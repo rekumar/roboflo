@@ -184,12 +184,13 @@ class Scheduler:
                     task._solution_count += 1
         self._num_tasks_on_last_solve = len(self.tasklist)
 
-    def solve(self, solve_time=5, breakpoints=[]):
+    def solve(self, solve_time=5, breakpoints=[[]]):
         solvetime_each = solve_time / (1 + len(breakpoints))
-        # for bp in breakpoints:
-        self._build_tasklist(breakpoints=breakpoints)
-        self._solve_once(solve_time=solvetime_each)
-        print(f"intermediate solution status: {self.solver.StatusName()}")
+        for bp in breakpoints:
+            if len(bp) > 0:
+                self._build_tasklist(breakpoints=bp)
+                self._solve_once(solve_time=solvetime_each)
+                print(f"intermediate solution status: {self.solver.StatusName()}")
 
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)

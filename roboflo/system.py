@@ -39,7 +39,21 @@ class System:
 
     def __generate_transition_task(
         self, task: Task, source: Worker, destination: Worker
-    ):
+    ) -> Transition:
+        """Generate a transition task between two workers
+
+        Args:
+            task (Task): the task to be executed after the transition
+            source (Worker): source worker
+            destination (Worker): destination worker
+
+        Raises:
+            ValueError: Invalid Worker object
+            ValueError: No Transition exists between source and destination
+
+        Returns:
+            Transition: task to move between workers
+        """
         if source not in self.transitions:
             raise ValueError(
                 f"{source} is not a valid worker in this system! Error thrown during transition for {task}"
@@ -49,7 +63,10 @@ class System:
                 f"No transition task defined from {source} to {destination}!"
             )
         transition_task = deepcopy(self.transitions[source][destination])
-        transition_task.immediate = task.immediate
+        if not transition_task.immediate:
+            transition_task.immediate = (
+                task.immediate
+            )  # if transition task is not immediate by default, use immediacy of the following task
         transition_task.precedent = task.precedent
         return transition_task
 
