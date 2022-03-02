@@ -173,9 +173,18 @@ class Scheduler:
         self.solver = cp_model.CpSolver()
         self.solver.parameters.max_time_in_seconds = solve_time
         self.solver.parameters.num_search_workers = 0  # use all cores
-        self.solver.Solve(self.model)
+        status = self.solver.Solve(self.model)
 
         taskidlist = [task.id for task in self.tasklist]
+        if status == cp_model.INFEASIBLE:
+            raise Exception(
+                "Schedule is infeasible - consider relaxing task immediacy or avoiding sequences of steps involving worker's with capacity of 1"
+            )
+        elif status == cp_model.UNKNOWN:
+            raise Exception(
+                "Schedule status is unknown - cannot guarantee that the schedule is valid. Consider increasing the solve_time parameter, introducing breakpoints, or reducing the complexity of your schedule."
+            )
+        print(f"\tsolution status: {self.solver.StatusName()}")
         for s in self.protocols:
             for task in s.worklist:
                 if task.id in taskidlist:
@@ -186,18 +195,15 @@ class Scheduler:
 
     def solve(self, solve_time=5, breakpoints=[[]]):
         solvetime_each = solve_time / (1 + len(breakpoints))
-        for bp in breakpoints:
+        for i, bp in enumerate(breakpoints):
             if len(bp) > 0:
+                print(f"Solving intermediate schedule up to breakpoint {i}")
                 self._build_tasklist(breakpoints=bp)
                 self._solve_once(solve_time=solvetime_each)
-                print(f"intermediate solution status: {self.solver.StatusName()}")
 
+        print("Solving final schedule")
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)
-        print(f"solution status: {self.solver.StatusName()}")
-        # if status in [3, 4]:
-        #     return
-        # self.plot_solution()
 
     def get_tasklist(self, only_recent=False):
         if only_recent:
