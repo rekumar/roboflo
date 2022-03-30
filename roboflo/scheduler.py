@@ -178,7 +178,7 @@ class Scheduler:
         taskidlist = [task.id for task in self.tasklist]
         if status == cp_model.INFEASIBLE:
             raise Exception(
-                "Schedule is infeasible - consider relaxing task immediacy or avoiding sequences of steps involving worker's with capacity of 1"
+                "Schedule is infeasible. Consider reducing number of immediate tasks, or avoiding sequences of steps involving Worker's with capacity of 1"
             )
         elif status == cp_model.UNKNOWN:
             raise Exception(
