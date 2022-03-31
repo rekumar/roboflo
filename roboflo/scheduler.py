@@ -68,6 +68,7 @@ class Scheduler:
         self.model = cp_model.CpModel()
         ending_variables = []
         machine_intervals = {w: [] for w in self.system.workers}
+        transition_intervals = {w: [] for w in self.system.workers}
         all_min_starts = [t.min_start for t in self.tasklist]
         if len(all_min_starts) > 0:
             latest_min_start = max(all_min_starts)
@@ -108,18 +109,23 @@ class Scheduler:
             )
             for w in task.workers:
                 machine_intervals[w].append(interval_var)
+            if isinstance(task, Transition):
+                for w in [task.source, task.destination]:
+                    transition_intervals[w].append(interval_var)
 
         # ### Worker Constraints
 
         for w in self.system.workers:
-            intervals = machine_intervals[w]
             if w.capacity > 1:
                 demands = [1 for _ in machine_intervals[w]]
-                self.model.AddCumulative(intervals, demands, w.capacity)
+                self.model.AddCumulative(machine_intervals[w], demands, w.capacity)
             else:
-                self.model.AddNoOverlap(intervals)
+                self.model.AddNoOverlap(machine_intervals[w])
+            self.model.AddNoOverlap(
+                transition_intervals[w]
+            )  # no two transitions (to or from) can occur simultaneously on a single worker
 
-        ### Force sequential tasks to preserve order even if not immediate
+        ### Force sequential tasks on single-capacity workers to preserve order even if not immediate
         spanning_tasks = {w: [] for w in self.system.workers if w.capacity == 1}
         for protocol in self.protocols:
             t0 = None
