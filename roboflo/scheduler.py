@@ -17,6 +17,9 @@ class Scheduler:
     def add_protocols(self, protocols):
         new_protocols = [p for p in protocols if p not in self.protocols]
         self.protocols += new_protocols
+        self._collect_breakpoints()
+
+    def _collect_breakpoints(self):
         self.breakpoints = [[]]
         for p in self.protocols:
             bp_counter = 0
@@ -31,6 +34,7 @@ class Scheduler:
         self._num_tasks_on_last_solve = 0
         self.protocols = []
         self.tasklist = []
+        self.breakpoints = []
 
     def _build_tasklist(self, breakpoints=[]):
         self.tasklist = []
