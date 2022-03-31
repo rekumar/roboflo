@@ -15,6 +15,7 @@ class Task(ABC):
         precedent=None,
         immediate: bool = False,
         details: dict = {},
+        breakpoint: bool = False,
     ):
         self.name = name
         self.workers = workers
@@ -22,6 +23,7 @@ class Task(ABC):
         self.precedent = precedent
         self.immediate = immediate
         self.details = details
+        self.breakpoint = breakpoint
 
         self.id = generate_id(prefix=self.name)
         self.start = np.nan

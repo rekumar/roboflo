@@ -17,6 +17,15 @@ class Scheduler:
     def add_protocols(self, protocols):
         new_protocols = [p for p in protocols if p not in self.protocols]
         self.protocols += new_protocols
+        self.breakpoints = [[]]
+        for p in self.protocols:
+            bp_counter = 0
+            for task in p.worklist:
+                if task.breakpoint:
+                    if bp_counter == len(self.breakpoints):
+                        self.breakpoints.append([])
+                    self.breakpoints[bp_counter].append(task)
+                    bp_counter += 1
 
     def clear_protocols(self):
         self._num_tasks_on_last_solve = 0
@@ -195,9 +204,9 @@ class Scheduler:
                     task._solution_count += 1
         self._num_tasks_on_last_solve = len(self.tasklist)
 
-    def solve(self, solve_time=5, breakpoints=[[]]):
-        solvetime_each = solve_time / (1 + len(breakpoints))
-        for i, bp in enumerate(breakpoints):
+    def solve(self, solve_time=5):
+        solvetime_each = solve_time / (1 + len(self.breakpoints))
+        for i, bp in enumerate(self.breakpoints):
             if len(bp) > 0:
                 print(f"Solving intermediate schedule up to breakpoint {i}")
                 self._build_tasklist(breakpoints=bp)
