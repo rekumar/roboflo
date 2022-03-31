@@ -6,16 +6,12 @@ import itertools as itt
 
 ### Task Scheduler
 class Scheduler:
-    def __init__(
-        self,
-        system,
-        protocols,
-    ):
+    def __init__(self, system, protocols: list, enforce_protocol_order: bool = False):
         self.system = system
         self.tasklist = []
         self.protocols = []
         self._num_tasks_on_last_solve = 0
-        self.enforce_protocol_order = False
+        self.enforce_protocol_order = enforce_protocol_order
         self.add_protocols(protocols)
 
     def add_protocols(self, protocols):

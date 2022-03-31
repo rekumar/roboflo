@@ -11,6 +11,7 @@ class System:
         transitions,
         starting_worker: Worker = None,
         ending_worker: Worker = None,
+        enforce_protocol_order: bool = False,
     ):
         """Facilitate scheduling of tasks that move between workers
 
@@ -19,7 +20,7 @@ class System:
             transitions (list): list of Transition objects that define moves between Worker's
             starting_worker (Worker, optional): Default Worker at which protocols begin. Defaults to None.
             ending_worker (Worker, optional): Default Worker at which protocols end. Defaults to None.
-
+            enforce_protocol_order (bool, optional): If True, protocols will be executed in the order they are defined. If False, protocol order may shuffle to reduce total runtime. Tasks within a given protocol will always maintain their order. Defaults to False.
         Raises:
             ValueError: [description]
         """
@@ -35,7 +36,9 @@ class System:
             self.transitions[t.source][t.destination] = t
 
         self._protocols = {}
-        self.scheduler = Scheduler(system=self, protocols=[])
+        self.scheduler = Scheduler(
+            system=self, protocols=[], enforce_protocol_order=enforce_protocol_order
+        )
 
     def __generate_transition_task(
         self, task: Task, source: Worker, destination: Worker
