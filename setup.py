@@ -24,7 +24,7 @@ with open(os.path.join(this_dir, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="roboflo",
-    version="0.1.2",
+    version="0.1.3",
     description="Scheduler for automation tasks that involve multiple stations/workers.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -45,8 +45,7 @@ setup(
     # },
     packages=find_packages(),
     package_data={
-        # "hardware": ["*.yaml", "*/*.yaml", "*/*/*.yaml", "*/*/*.json"],
-        "Examples": ["*.ipynb"],
+        "": ["Examples/*.ipynb"],
     },
     include_package_data=True,
     keywords=["research", "science", "machine", "automation"],
