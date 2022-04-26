@@ -1,3 +1,6 @@
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/rekumar/roboflo/HEAD)
+[![PyPI version](https://badge.fury.io/py/roboflo.svg)](https://badge.fury.io/py/roboflo)
+
 ![roboflo](/docs/roboflo.png)
 
 `pip install roboflo`
