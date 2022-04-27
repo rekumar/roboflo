@@ -1,4 +1,4 @@
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/rekumar/roboflo/HEAD)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/rekumar/roboflo/HEAD?labpath=.%2FExamples%2Fbasic%20usage.ipynb)
 [![PyPI version](https://badge.fury.io/py/roboflo.svg)](https://badge.fury.io/py/roboflo)
 
 ![roboflo](/docs/roboflo.png)
