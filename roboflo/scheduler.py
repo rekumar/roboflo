@@ -208,6 +208,19 @@ class Scheduler:
                     task._solution_count += 1
         self._num_tasks_on_last_solve = len(self.tasklist)
 
+    def flex(self, cutoff_time: float):
+        """Remove any solved start/end times for tasks that start past a given cutoff time. This will force the solver to resolve these tasks on the next solve.
+
+        Args:
+            cutoff_time (float): time after which tasks should have existing start/end times removed.
+        """
+        for task in self.tasklist:
+            if np.isnan(task.start):
+                continue
+            if task.start >= cutoff_time:
+                task.start = np.nan
+                task.end = np.nan
+
     def solve(self, solve_time=5):
         solvetime_each = solve_time / (1 + len(self.breakpoints))
         for i, bp in enumerate(self.breakpoints):
