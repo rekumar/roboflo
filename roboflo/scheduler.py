@@ -233,7 +233,7 @@ class Scheduler:
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)
 
-    def get_tasklist(self, only_recent=False):
+    def get_tasklist(self, only_recent=False, json=False):
         if only_recent:
             ordered_tasks = [
                 task for task in self.tasklist if task._solution_count <= 1
@@ -241,9 +241,11 @@ class Scheduler:
         else:
             ordered_tasks = self.tasklist.copy()
         ordered_tasks.sort(key=lambda x: x.start)
+        if json:
+            ordered_tasks = [t.to_json() for t in ordered_tasks]
         return ordered_tasks
 
-    def get_tasklist_by_worker(self, only_recent=False):
+    def get_tasklist_by_worker(self, only_recent=False, json=False):
         ordered_tasks = {}
         for w in self.system.workers:
             if only_recent:
@@ -257,6 +259,12 @@ class Scheduler:
                     task for task in self.tasklist if task.workers[0] == w
                 ]
             ordered_tasks[w].sort(key=lambda x: x.start)
+
+        if json:
+            ordered_tasks = {
+                w.name: [t.to_json() for t in tasks]
+                for w, tasks in ordered_tasks.items()
+            }
         return ordered_tasks
 
     def plot_solution(self, ax=None):
