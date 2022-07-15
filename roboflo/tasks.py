@@ -12,18 +12,22 @@ class Task(ABC):
         name: str,
         workers: list,
         duration: int,
-        precedent=None,
+        precedent: list = [],
         immediate: bool = False,
         details: dict = {},
         breakpoint: bool = False,
+        freeze: bool = False,
     ):
         self.name = name
         self.workers = workers
         self.duration = ceil(duration)  # CPSat solver only works with integers
         self.precedent = precedent
+        if isinstance(self.precedent, Task):
+            self.precedent = [self.precedent]
         self.immediate = immediate
         self.details = details
         self.breakpoint = breakpoint
+        self.freeze = freeze
 
         self.id = generate_id(prefix=self.name)
         self.start = np.nan
@@ -56,9 +60,12 @@ class Task(ABC):
         for k, v in self.__dict__.items():
             setattr(result, k, deepcopy(v, memo))
 
-        result.id = generate_id(
-            prefix=result.name
-        )  # give a unique id to the copied task
+        if self.freeze:
+            result.id = self.id
+        else:
+            result.id = generate_id(
+                prefix=result.name
+            )  # give a unique id to the copied task
         return result
 
     def to_dict(self):
@@ -67,11 +74,13 @@ class Task(ABC):
             "start": self.start,
             "id": self.id,
             "details": self.generate_details(),
+            "precedent": [p.id for p in self.precedent],
         }
-        if self.precedent is None:
-            out["precedent"] = None
-        else:
-            out["precedent"] = self.precedent.id
+
+        # if self.precedent is None:
+        #     out["precedent"] = None
+        # else:
+        #     out["precedent"] = self.precedent.id
 
         return out
 

@@ -1,7 +1,7 @@
 from ortools.sat.python import cp_model
 import matplotlib.pyplot as plt
 import numpy as np
-from roboflo.tasks import Transition
+from roboflo.tasks import Task, Transition
 import itertools as itt
 
 ### Task Scheduler
@@ -45,7 +45,8 @@ class Scheduler:
                 task = next(taskit, None)
                 if task is None:
                     break
-                self.tasklist.append(task)
+                if task not in self.tasklist:
+                    self.tasklist.append(task)
                 if task in breakpoints:
                     reached_breakpoint = True
             still_immediate = True
@@ -55,7 +56,8 @@ class Scheduler:
                 if still_immediate or not np.isnan(
                     task.start
                 ):  # immediate tasks left, or task is already solved
-                    self.tasklist.append(task)
+                    if task not in self.tasklist:
+                        self.tasklist.append(task)
 
             # for task in p.worklist:
             #     if not found_breakpoint:
@@ -87,7 +89,7 @@ class Scheduler:
 
         ### Task Constraints
         for task in self.tasklist:
-            if not np.isnan(task.end):  # ie we already solved this task
+            if type(task.end) == int:  # ie we already solved this task
                 task.end_var = self.model.NewConstant(task.end)
             else:
                 task.end_var = self.model.NewIntVar(
@@ -97,17 +99,35 @@ class Scheduler:
 
         for task in self.tasklist:
             ## connect to preceding tasks
-            if task.immediate and (task.precedent is not None):
-                task.start_var = task.precedent.end_var
-            else:
-                if not np.isnan(task.start):
-                    task.start_var = self.model.NewConstant(task.start)
+            if type(task.start) == int:  # this start time is already solved for
+                task.start_var = self.model.NewConstant(task.start)
+            elif task.immediate:
+                if len(task.precedent) == 1:
+                    task.start_var = task.precedent[0].end_var
                 else:
                     task.start_var = self.model.NewIntVar(
                         task.min_start, horizon, "start " + str(task.id)
                     )
-                    if task.precedent is not None:
-                        self.model.Add(task.start_var >= task.precedent.end_var)
+                    for precedent in task.precedent:
+                        self.model.Add(task.start_var == precedent.end_var)
+            else:
+                task.start_var = self.model.NewIntVar(
+                    task.min_start, horizon, "start " + str(task.id)
+                )
+                for precedent in task.precedent:
+                    self.model.Add(task.start_var >= precedent.end_var)
+
+            # if task.immediate and (task.precedent is not None):
+            #     task.start_var = task.precedent.end_var
+            # else:
+            #     if not np.isnan(task.start):
+            #         task.start_var = self.model.NewConstant(task.start)
+            #     else:
+            #         task.start_var = self.model.NewIntVar(
+            #             task.min_start, horizon, "start " + str(task.id)
+            #         )
+            #         if task.precedent is not None:
+            #             self.model.Add(task.start_var >= task.precedent.end_var)
 
             ## mark workers as occupied during this task
             interval_var = self.model.NewIntervalVar(

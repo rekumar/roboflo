@@ -88,9 +88,19 @@ class System:
             raise ValueError(
                 f'Protocol by the name "{name}" already exists - please select a unique name!'
             )
+        wl = []
+        for task in worklist:
+            if not isinstance(task, Task):
+                raise ValueError("Protocol worklist must be a list of Task objects!")
+            if task.freeze:
+                wl.append(task)
+            else:
+                wl.append(deepcopy(task))
+
         wl = deepcopy(worklist)
         for task0, task1 in zip(wl, wl[1:]):
-            task1.precedent = task0  # task1 is preceded by task0
+            if task0 not in task1.precedent:
+                task1.precedent.append(task0)  # task1 is preceded by task0
 
         protocol_worklist = []
         if starting_worker is None:
@@ -112,7 +122,7 @@ class System:
                     task, source, destination
                 )
                 protocol_worklist.append(transition_task)
-                task.precedent = transition_task
+                task.precedent = [transition_task]
             protocol_worklist.append(task)
             source = destination  # update location for next task
         if ending_worker is not None:
@@ -120,7 +130,7 @@ class System:
                 transition_task = self.__generate_transition_task(
                     task, destination, ending_worker
                 )
-                transition_task.precedent = protocol_worklist[-1]
+                transition_task.precedent = [protocol_worklist[-1]]
                 protocol_worklist.append(transition_task)  # sample ends at storage
 
         min_start = ceil(min_start)  # must be integer
