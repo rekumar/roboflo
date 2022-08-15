@@ -85,10 +85,7 @@ class System:
         Returns:
             Task: task instance
         """
-        if (
-            task.id not in self.__current_task_instances
-            or min_start > self.__latest_existing_start_time
-        ):
+        if task.id not in self.__current_task_instances:
             self.__current_task_instances[task.id] = deepcopy(task)
         task_instance = self.__current_task_instances[task.id]
         if task_instance._utilized_capacity == task_instance.capacity:
@@ -108,9 +105,11 @@ class System:
         starting_worker: Worker = None,
         ending_worker: Worker = None,
     ) -> list:
-    
+
         if min_start > self.__latest_existing_start_time:
             self.__latest_existing_start_time = min_start
+            self.__current_task_instances = {}
+
         if name is None:
             idx = len(self._protocols)
             name = f"sample{idx}"
@@ -168,4 +167,5 @@ class System:
 
         self._protocols[name] = p
         self.scheduler.add_protocols([p])
+
         return p
