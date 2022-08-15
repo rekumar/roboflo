@@ -1,8 +1,11 @@
+from collections import namedtuple
 from ortools.sat.python import cp_model
 import matplotlib.pyplot as plt
 import numpy as np
 from roboflo.tasks import Task, Transition
 import itertools as itt
+
+machine_load = namedtuple("MachineLoad", ["interval_var", "load"])
 
 ### Task Scheduler
 class Scheduler:
@@ -137,7 +140,11 @@ class Scheduler:
                 "interval " + str(task.id),
             )
             for w in task.workers:
-                machine_intervals[w].append(interval_var)
+                machine_intervals[w].append(
+                    machine_load(
+                        interval_var=interval_var, load=task._utilized_capacity
+                    )
+                )
             if isinstance(task, Transition):
                 for w in [task.source, task.destination]:
                     transition_intervals[w].append(interval_var)
@@ -145,11 +152,18 @@ class Scheduler:
         # ### Worker Constraints
 
         for w in self.system.workers:
-            if w.capacity > 1:
-                demands = [1 for _ in machine_intervals[w]]
-                self.model.AddCumulative(machine_intervals[w], demands, w.capacity)
+            intervals = []
+            demands = []
+            for load in machine_intervals[w]:
+                intervals.append(load.interval_var)
+                demands.append(load.load)
+            if not w.one_task_at_a_time and w.capacity > 1:
+                # demands = [1 for _ in machine_intervals[w]]
+                # self.model.AddCumulative(machine_intervals[w], demands, w.capacity)
+                self.model.AddCumulative(intervals, demands, w.capacity)
             else:
-                self.model.AddNoOverlap(machine_intervals[w])
+                # self.model.AddNoOverlap(machine_intervals[w])
+                self.model.AddNoOverlap(intervals)
             self.model.AddNoOverlap(
                 transition_intervals[w]
             )  # no two transitions (to or from) can occur simultaneously on a single worker

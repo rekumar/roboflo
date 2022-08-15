@@ -1,3 +1,4 @@
+from warnings import warn
 import numpy as np
 from math import ceil
 import json
@@ -16,7 +17,7 @@ class Task(ABC):
         immediate: bool = False,
         details: dict = {},
         breakpoint: bool = False,
-        freeze: bool = False,
+        capacity: int = 1,
     ):
         self.name = name
         self.workers = workers
@@ -27,12 +28,24 @@ class Task(ABC):
         self.immediate = immediate
         self.details = details
         self.breakpoint = breakpoint
-        self.freeze = freeze
+        self.capacity = capacity
+        self._utilized_capacity = 0
 
         self.id = generate_id(prefix=self.name)
         self.start = np.nan
         self.end = np.nan
         self._solution_count = 0
+
+        if self.capacity > 1:
+            for w in self.workers:
+                if self.capacity > w.capacity:
+                    raise ValueError(
+                        f"Task {self.name} has capacity {self.capacity}, which is greater than that of required worker {w.name} with capacity {w.capacity}! Task capacity must be less than or equal to that of its workers!"
+                    )
+            if self.immediate:
+                warn(
+                    "Task {self.name} has capacity {self.capacity} and immediate set to True. Schedules will typically be infeasible with immediate tasks of capacity > 1, as preceding Transition tasks cannot complete simultaneously!"
+                )
 
     def generate_details(self) -> float:
         """construct a dictionary of additional details to describe this task.
@@ -58,14 +71,17 @@ class Task(ABC):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
+            # if k == "precedent":
+            #     setattr(
+            #         result, k, self.precedent
+            #     )  # deepcopy would mess up precedent task id's
+            # else:
             setattr(result, k, deepcopy(v, memo))
 
-        if self.freeze:
-            result.id = self.id
-        else:
-            result.id = generate_id(
-                prefix=result.name
-            )  # give a unique id to the copied task
+        result.id = generate_id(
+            prefix=result.name
+        )  # give a unique id to the copied task
+        result._utilized_capacity = 0  # new instance has not been filled at all
         return result
 
     def to_dict(self):
@@ -95,10 +111,10 @@ class Worker(ABC):
     act to complete tasks.
     """
 
-    def __init__(self, name, capacity, initial_fill=0):
+    def __init__(self, name: str, capacity: int, one_task_at_a_time: bool = False):
         self.name = name
         self.capacity = capacity
-        self.initial_fill = initial_fill
+        self.one_task_at_a_time = one_task_at_a_time
 
     def __hash__(self):
         return hash(str(type(self)))

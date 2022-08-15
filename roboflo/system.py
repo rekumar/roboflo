@@ -1,3 +1,4 @@
+from collections import namedtuple
 from roboflo.tasks import Task, Transition, Worker, Protocol
 from roboflo.scheduler import Scheduler
 from copy import deepcopy
@@ -40,6 +41,9 @@ class System:
             system=self, protocols=[], enforce_protocol_order=enforce_protocol_order
         )
 
+        self.__current_task_instances = {}
+        self.__latest_existing_start_time = 0
+
     def __generate_transition_task(
         self, task: Task, source: Worker, destination: Worker
     ) -> Transition:
@@ -73,6 +77,29 @@ class System:
         transition_task.precedent = task.precedent
         return transition_task
 
+    def __get_task_instance(self, task: Task, min_start: int = 0) -> Task:
+        """Get a task instance for a new protocol. If the task has capacity > 1 and a current task instance exists with remaining capacity, we will use that instance until it is full. Otherwise, a new instance will be started. If the min_start time is later than the latest start time for which a protocol has previously been entered into the schedule (ie we can assume that we are inserting a protocol into an existing schedule in progress), a new task instance will always be started.
+
+        Args:
+            task_id (str): id of the task instance to get
+        Returns:
+            Task: task instance
+        """
+        if (
+            task.id not in self.__current_task_instances
+            or min_start > self.__latest_existing_start_time
+        ):
+            self.__current_task_instances[task.id] = deepcopy(task)
+        task_instance = self.__current_task_instances[task.id]
+        if task_instance._utilized_capacity == task_instance.capacity:
+            self.__current_task_instances[task.id] = deepcopy(task)
+            task_instance = self.__current_task_instances[task.id]
+
+        task_instance._utilized_capacity += (
+            1  # we are using this task for this protocol
+        )
+        return task_instance
+
     def generate_protocol(
         self,
         worklist: list,
@@ -81,6 +108,9 @@ class System:
         starting_worker: Worker = None,
         ending_worker: Worker = None,
     ) -> list:
+    
+        if min_start > self.__latest_existing_start_time:
+            self.__latest_existing_start_time = min_start
         if name is None:
             idx = len(self._protocols)
             name = f"sample{idx}"
@@ -91,13 +121,10 @@ class System:
         wl = []
         for task in worklist:
             if not isinstance(task, Task):
-                raise ValueError("Protocol worklist must be a list of Task objects!")
-            if task.freeze:
-                wl.append(task)
-            else:
-                wl.append(deepcopy(task))
+                raise TypeError("Protocol worklist must be a list of Task objects!")
+            task_instance = self.__get_task_instance(task=task, min_start=min_start)
+            wl.append(task_instance)
 
-        wl = deepcopy(worklist)
         for task0, task1 in zip(wl, wl[1:]):
             if task0 not in task1.precedent:
                 task1.precedent.append(task0)  # task1 is preceded by task0
