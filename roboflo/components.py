@@ -3,17 +3,40 @@ import numpy as np
 from math import ceil
 import json
 from copy import deepcopy
-from roboflo.helpers import generate_id
+from roboflo.utils import generate_id
 from abc import ABC
+from typing import List
+
+
+class Worker(ABC):
+    """
+    This class contains the nuts and bolts to schedule tasks
+    for each "worker". Workers are considered single units that
+    act to complete tasks.
+    """
+
+    def __init__(self, name: str, capacity: int, one_task_at_a_time: bool = False):
+        self.name = name
+        self.capacity = capacity
+        self.one_task_at_a_time = one_task_at_a_time
+
+    def __hash__(self):
+        return hash(str(type(self)))
+
+    def __repr__(self):
+        return f"<Worker: {self.name}>"
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and (self.name == other.name)
 
 
 class Task(ABC):
     def __init__(
         self,
         name: str,
-        workers: list,
+        workers: List[Worker],
         duration: int,
-        precedent: list = [],
+        precedent: List["Task"] = [],
         immediate: bool = False,
         details: dict = {},
         breakpoint: bool = False,
@@ -41,7 +64,7 @@ class Task(ABC):
                 if self.capacity > w.capacity:
                     raise ValueError(
                         f"Task {self.name} has capacity {self.capacity}, which is greater than that of required worker {w.name} with capacity {w.capacity}! Task capacity must be less than or equal to that of its workers!"
-                    )
+                    )  # TODO should we compare against capacity of all workers? or just against the primary worker (ie first in list)
             if self.immediate:
                 warn(
                     "Task {self.name} has capacity {self.capacity} and immediate set to True. Schedules will typically be infeasible with immediate tasks of capacity > 1, as preceding Transition tasks cannot complete simultaneously!"
@@ -104,36 +127,14 @@ class Task(ABC):
         return json.dumps(self.to_dict())
 
 
-class Worker(ABC):
-    """
-    This class contains the nuts and bolts to schedule tasks
-    for each "worker". Workers are considered single units that
-    act to complete tasks.
-    """
-
-    def __init__(self, name: str, capacity: int, one_task_at_a_time: bool = False):
-        self.name = name
-        self.capacity = capacity
-        self.one_task_at_a_time = one_task_at_a_time
-
-    def __hash__(self):
-        return hash(str(type(self)))
-
-    def __repr__(self):
-        return f"<Worker: {self.name}>"
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and (self.name == other.name)
-
-
 class Transition(Task):
     def __init__(
         self,
         duration: int,
         source: Worker,
         destination: Worker,
-        workers: list,
-        precedent=None,
+        workers: List[Worker],
+        precedent: List[Task] = [],
         immediate: bool = False,
         details: dict = {},
     ):
@@ -160,7 +161,7 @@ class Protocol:
     def __init__(
         self,
         name: str,
-        worklist: list,
+        worklist: List[Task],
     ):
         self.name = name
         self.worklist = []

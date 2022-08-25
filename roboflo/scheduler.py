@@ -2,22 +2,31 @@ from collections import namedtuple
 from ortools.sat.python import cp_model
 import matplotlib.pyplot as plt
 import numpy as np
-from roboflo.tasks import Task, Transition
-import itertools as itt
+from roboflo.components import Task, Transition, Protocol
+
+from typing import TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from roboflo.system import System
 
 machine_load = namedtuple("MachineLoad", ["interval_var", "load"])
 
 ### Task Scheduler
 class Scheduler:
-    def __init__(self, system, protocols: list, enforce_protocol_order: bool = False):
+    def __init__(
+        self,
+        system: "System",
+        protocols: List[Protocol],
+        enforce_protocol_order: bool = False,
+    ):
         self.system = system
         self.tasklist = []
-        self.protocols = []
         self._num_tasks_on_last_solve = 0
         self.enforce_protocol_order = enforce_protocol_order
+        self.protocols = []
         self.add_protocols(protocols)
 
-    def add_protocols(self, protocols):
+    def add_protocols(self, protocols: List[Protocol]):
         new_protocols = [p for p in protocols if p not in self.protocols]
         self.protocols += new_protocols
         self._collect_breakpoints()
@@ -157,13 +166,12 @@ class Scheduler:
             for load in machine_intervals[w]:
                 intervals.append(load.interval_var)
                 demands.append(load.load)
-            if not w.one_task_at_a_time and w.capacity > 1:
-                # demands = [1 for _ in machine_intervals[w]]
-                # self.model.AddCumulative(machine_intervals[w], demands, w.capacity)
-                self.model.AddCumulative(intervals, demands, w.capacity)
-            else:
-                # self.model.AddNoOverlap(machine_intervals[w])
+            if w.one_task_at_a_time or w.capacity == 1:
+                # no tasks can overlap
                 self.model.AddNoOverlap(intervals)
+            else:
+                # tasks can overlap as long as worker capacity is respected
+                self.model.AddCumulative(intervals, demands, w.capacity)
             self.model.AddNoOverlap(
                 transition_intervals[w]
             )  # no two transitions (to or from) can occur simultaneously on a single worker
@@ -212,7 +220,7 @@ class Scheduler:
         self.model.AddMaxEquality(objective_var, ending_variables)
         self.model.Minimize(objective_var)
 
-    def _solve_once(self, solve_time):
+    def _solve_once(self, solve_time:float):
         self._initialize_model()
         if len(self.tasklist) == self._num_tasks_on_last_solve:
             print(
@@ -255,7 +263,7 @@ class Scheduler:
                 task.start = np.nan
                 task.end = np.nan
 
-    def solve(self, solve_time=5):
+    def solve(self, solve_time: float = 5):
         solvetime_each = solve_time / (1 + len(self.breakpoints))
         for i, bp in enumerate(self.breakpoints):
             if len(bp) > 0:
@@ -267,7 +275,7 @@ class Scheduler:
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)
 
-    def get_tasklist(self, only_recent=False, json=False):
+    def get_tasklist(self, only_recent:bool =False, json:bool=False):
         if only_recent:
             ordered_tasks = [
                 task for task in self.tasklist if task._solution_count <= 1
@@ -279,7 +287,7 @@ class Scheduler:
             ordered_tasks = [t.to_json() for t in ordered_tasks]
         return ordered_tasks
 
-    def get_tasklist_by_worker(self, only_recent=False, json=False):
+    def get_tasklist_by_worker(self, only_recent:bool=False, json:bool=False):
         ordered_tasks = {}
         for w in self.system.workers:
             if only_recent:
@@ -301,7 +309,7 @@ class Scheduler:
             }
         return ordered_tasks
 
-    def plot_solution(self, ax=None):
+    def plot_solution(self, ax:plt.Axes=None):
         fig, ax = plt.subplots(figsize=(14, 5))
 
         for idx, p in enumerate(self.protocols):

@@ -1,15 +1,16 @@
 from collections import namedtuple
-from roboflo.tasks import Task, Transition, Worker, Protocol
+from roboflo.components import Task, Transition, Worker, Protocol
 from roboflo.scheduler import Scheduler
 from copy import deepcopy
 from math import ceil
+from typing import List
 
 
 class System:
     def __init__(
         self,
-        workers,
-        transitions,
+        workers: List[Worker],
+        transitions: List[Transition],
         starting_worker: Worker = None,
         ending_worker: Worker = None,
         enforce_protocol_order: bool = False,
@@ -104,7 +105,7 @@ class System:
         min_start: int = 0,
         starting_worker: Worker = None,
         ending_worker: Worker = None,
-    ) -> list:
+    ) -> Protocol:
 
         if min_start > self.__latest_existing_start_time:
             self.__latest_existing_start_time = min_start
