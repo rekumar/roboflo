@@ -15,10 +15,17 @@ class Worker(ABC):
     act to complete tasks.
     """
 
-    def __init__(self, name: str, capacity: int, one_task_at_a_time: bool = False):
+    def __init__(
+        self,
+        name: str,
+        capacity: int,
+        one_task_at_a_time: bool = False,
+        initial_fill: int = 0,
+    ):
         self.name = name
         self.capacity = capacity
         self.one_task_at_a_time = one_task_at_a_time
+        self.initial_fill = initial_fill
 
     def __hash__(self):
         return hash(str(type(self)))

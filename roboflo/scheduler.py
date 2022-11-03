@@ -91,6 +91,8 @@ class Scheduler:
         self.model = cp_model.CpModel()
         ending_variables = []
         machine_intervals = {w: [] for w in self.system.workers}
+        incoming_times = {w: [] for w in self.system.workers}
+        outgoing_times = {w: [] for w in self.system.workers}
         transition_intervals = {w: [] for w in self.system.workers}
         all_min_starts = [t.min_start for t in self.tasklist]
         if len(all_min_starts) > 0:
@@ -158,7 +160,10 @@ class Scheduler:
                 for w in [task.source, task.destination]:
                     transition_intervals[w].append(interval_var)
 
-        # ### Worker Constraints
+                incoming_times[task.destination].append(task.start_var)
+                outgoing_times[task.source].append(task.end_var)
+
+        ### Worker Constraints
 
         for w in self.system.workers:
             intervals = []
@@ -176,37 +181,48 @@ class Scheduler:
                 transition_intervals[w]
             )  # no two transitions (to or from) can occur simultaneously on a single worker
 
-        ### Force sequential tasks on single-capacity workers to preserve order even if not immediate
-        spanning_tasks = {w: [] for w in self.system.workers if w.capacity == 1}
-        for protocol in self.protocols:
-            t0 = None
-            t1 = None
-            for i, task0 in enumerate(protocol.worklist):
-                if task0 not in self.tasklist:
-                    continue
-                if not isinstance(task0, Transition):
-                    continue
-                if task0.destination.capacity == 1:
-                    for task1 in protocol.worklist[i:]:
-                        if task1 not in self.tasklist:
-                            continue
-                        if not isinstance(task1, Transition):
-                            continue
-                        if (
-                            task0.destination == task1.source
-                        ):  # ie task1 is a transition off of the unit-capacity station
-                            duration = self.model.NewIntVar(0, horizon, "duration")
-                            interval = self.model.NewIntervalVar(
-                                task0.start_var,
-                                duration,
-                                task1.end_var,
-                                "sampleinterval",
-                            )
-                            spanning_tasks[task0.destination].append(interval)
-                            break
+        ### Reservoir constraints to manage Worker capacities
+        for w in self.system.workers:
+            self.model.AddReservoirConstraint(
+                times=[0] + incoming_times[w] + outgoing_times[w],
+                level_changes=[w.initial_fill]
+                + [1] * len(incoming_times[w])
+                + [-1] * len(outgoing_times[w]),
+                min_level=0,
+                max_level=w.capacity,
+            )
 
-        for intervals in spanning_tasks.values():
-            self.model.AddNoOverlap(intervals)
+        ### Force sequential tasks on single-capacity workers to preserve order even if not immediate
+        # spanning_tasks = {w: [] for w in self.system.workers if w.capacity == 1}
+        # for protocol in self.protocols:
+        #     t0 = None
+        #     t1 = None
+        #     for i, task0 in enumerate(protocol.worklist):
+        #         if task0 not in self.tasklist:
+        #             continue
+        #         if not isinstance(task0, Transition):
+        #             continue
+        #         if task0.destination.capacity == 1:
+        #             for task1 in protocol.worklist[i:]:
+        #                 if task1 not in self.tasklist:
+        #                     continue
+        #                 if not isinstance(task1, Transition):
+        #                     continue
+        #                 if (
+        #                     task0.destination == task1.source
+        #                 ):  # ie task1 is a transition off of the unit-capacity station
+        #                     duration = self.model.NewIntVar(0, horizon, "duration")
+        #                     interval = self.model.NewIntervalVar(
+        #                         task0.start_var,
+        #                         duration,
+        #                         task1.end_var,
+        #                         "sampleinterval",
+        #                     )
+        #                     spanning_tasks[task0.destination].append(interval)
+        #                     break
+
+        # for intervals in spanning_tasks.values():
+        #     self.model.AddNoOverlap(intervals)
 
         ### Force sample order if flagged
         if self.enforce_protocol_order:
@@ -220,7 +236,7 @@ class Scheduler:
         self.model.AddMaxEquality(objective_var, ending_variables)
         self.model.Minimize(objective_var)
 
-    def _solve_once(self, solve_time:float):
+    def _solve_once(self, solve_time: float):
         self._initialize_model()
         if len(self.tasklist) == self._num_tasks_on_last_solve:
             print(
@@ -275,7 +291,7 @@ class Scheduler:
         self._build_tasklist()
         self._solve_once(solve_time=solvetime_each)
 
-    def get_tasklist(self, only_recent:bool =False, json:bool=False):
+    def get_tasklist(self, only_recent: bool = False, json: bool = False):
         if only_recent:
             ordered_tasks = [
                 task for task in self.tasklist if task._solution_count <= 1
@@ -287,7 +303,7 @@ class Scheduler:
             ordered_tasks = [t.to_json() for t in ordered_tasks]
         return ordered_tasks
 
-    def get_tasklist_by_worker(self, only_recent:bool=False, json:bool=False):
+    def get_tasklist_by_worker(self, only_recent: bool = False, json: bool = False):
         ordered_tasks = {}
         for w in self.system.workers:
             if only_recent:
@@ -309,7 +325,7 @@ class Scheduler:
             }
         return ordered_tasks
 
-    def plot_solution(self, ax:plt.Axes=None):
+    def plot_solution(self, ax: plt.Axes = None):
         fig, ax = plt.subplots(figsize=(14, 5))
 
         for idx, p in enumerate(self.protocols):
