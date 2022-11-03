@@ -86,10 +86,9 @@ class Worker(ABC):
     act to complete tasks.
     """
 
-    def __init__(self, name, capacity, initial_fill=0):
+    def __init__(self, name, capacity):
         self.name = name
         self.capacity = capacity
-        self.initial_fill = initial_fill
 
     def __hash__(self):
         return hash(str(type(self)))
@@ -181,3 +180,13 @@ class Protocol:
 
     def __hash__(self):
         return hash(self.__key())
+
+    def __getitem__(self, key):
+        try:
+            return self.worklist[key]
+        except:
+            raise KeyError(
+                "{key} is not a valid index. Protocol only has {} tasks. Key must be an integer index to a task in the protocol worklist!".format(
+                    len(self.worklist)
+                )
+            )
