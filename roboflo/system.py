@@ -106,11 +106,6 @@ class System:
         starting_worker: Worker = None,
         ending_worker: Worker = None,
     ) -> Protocol:
-
-        if min_start > self.__latest_existing_start_time:
-            self.__latest_existing_start_time = min_start
-            self.__current_task_instances = {}
-
         if name is None:
             idx = len(self._protocols)
             name = f"sample{idx}"
@@ -118,6 +113,11 @@ class System:
             raise ValueError(
                 f'Protocol by the name "{name}" already exists - please select a unique name!'
             )
+
+        if min_start > self.__latest_existing_start_time:
+            self.__latest_existing_start_time = min_start
+            self.__current_task_instances = {}
+
         wl = []
         for task in worklist:
             if not isinstance(task, Task):
@@ -170,3 +170,7 @@ class System:
         self.scheduler.add_protocols([p])
 
         return p
+
+    def solve(self, solve_time: float = 5):
+        self.__current_task_instances = {}
+        self.scheduler.solve(solve_time=solve_time)
