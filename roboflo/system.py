@@ -1,3 +1,4 @@
+from typing import List
 from roboflo.tasks import Task, Transition, Worker, Protocol
 from roboflo.scheduler import Scheduler
 from copy import deepcopy
@@ -7,8 +8,8 @@ from math import ceil
 class System:
     def __init__(
         self,
-        workers,
-        transitions,
+        workers: List[Worker],
+        transitions: List[Transition],
         starting_worker: Worker = None,
         ending_worker: Worker = None,
         enforce_protocol_order: bool = False,
@@ -17,7 +18,7 @@ class System:
 
         Args:
             workers (list): list of Worker objects
-            transitions (list): list of Transition objects that define moves between Worker's
+            transitions (list): list of Transition objects that define moves between Workers
             starting_worker (Worker, optional): Default Worker at which protocols begin. Defaults to None.
             ending_worker (Worker, optional): Default Worker at which protocols end. Defaults to None.
             enforce_protocol_order (bool, optional): If True, protocols will be executed in the order they are defined. If False, protocol order may shuffle to reduce total runtime. Tasks within a given protocol will always maintain their order. Defaults to False.
@@ -33,6 +34,10 @@ class System:
         self.ending_worker = ending_worker
         self.transitions = {w: {} for w in self.workers}
         for t in transitions:
+            if (t.source not in self.workers) or (t.destination not in self.workers):
+                raise ValueError(
+                    f"Invalid transition {t}. The source and/or destination worker is not a part of this system! Workers on this system: {self.workers}."
+                )
             self.transitions[t.source][t.destination] = t
 
         self._protocols = {}
@@ -93,10 +98,7 @@ class System:
             task1.precedent = task0  # task1 is preceded by task0
 
         protocol_worklist = []
-        if starting_worker is None:
-            source = self.starting_worker
-        else:
-            source = starting_worker
+        source = starting_worker or self.starting_worker
         if source is None:
             raise ValueError(
                 "No default starting worker defined for this System, so starting_worker must be specified in .generate_protocol!"

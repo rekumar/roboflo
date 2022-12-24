@@ -220,6 +220,7 @@ class Scheduler:
             if task.start >= cutoff_time:
                 task.start = np.nan
                 task.end = np.nan
+                self._num_tasks_on_last_solve -= 1
 
     def solve(self, solve_time=5):
         solvetime_each = solve_time / (1 + len(self.breakpoints))

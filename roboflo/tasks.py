@@ -14,7 +14,7 @@ class Task(ABC):
         duration: int,
         precedent=None,
         immediate: bool = False,
-        details: dict = {},
+        details: dict = None,
         breakpoint: bool = False,
     ):
         self.name = name
@@ -22,7 +22,7 @@ class Task(ABC):
         self.duration = ceil(duration)  # CPSat solver only works with integers
         self.precedent = precedent
         self.immediate = immediate
-        self.details = details
+        self.details = details or {}
         self.breakpoint = breakpoint
 
         self.id = generate_id(prefix=self.name)
@@ -36,9 +36,9 @@ class Task(ABC):
         step) that do not affect scheduling, but are important to execute
         the task properly downstream.
 
-        Subclasses of Task should implement this method as necessary
+        Subclasses of Task should overwrite this method as necessary
         """
-        return {}
+        return self.details
 
     def __repr__(self):
         return f"<Task: {self.name}, runs from {self.start} - {self.end}>"
@@ -86,9 +86,11 @@ class Worker(ABC):
     act to complete tasks.
     """
 
-    def __init__(self, name, capacity):
+    def __init__(self, name: str, capacity: int):
         self.name = name
         self.capacity = capacity
+        if capacity <= 0:
+            raise ValueError("Worker capacity must be greater than 0")
 
     def __hash__(self):
         return hash(str(type(self)))
@@ -109,7 +111,7 @@ class Transition(Task):
         workers: list,
         precedent=None,
         immediate: bool = False,
-        details: dict = {},
+        details: dict = None,
     ):
         self.source = source
         self.destination = destination
