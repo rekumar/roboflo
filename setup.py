@@ -17,7 +17,7 @@ dev_requirements = ["pytest >= 6.2.5"]
 
 setup(
     name="roboflo",
-    version="0.2",
+    version="{{VERSION_PLACEHOLDER}}",
     description="Scheduler for automation tasks that involve multiple stations/workers.",
     long_description=long_description,
     long_description_content_type="text/markdown",
