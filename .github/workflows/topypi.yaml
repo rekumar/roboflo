@@ -1,24 +1,26 @@
-name: Version Bump, Build+Upload to PyPI
+name: Build+Upload to PyPI
 
 on:
   push:
     branches:
       - master
+    tags:
+      - 'v*.*.*'
 
-jobs:
-  bump-version:
-    name: Bump version and push tag
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: '0'
-      - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
-          DEFAULT_BUMP: patch
+# jobs:
+#   bump-version:
+#     name: Bump version and push tag
+#     runs-on: ubuntu-22.04
+#     steps:
+#       - uses: actions/checkout@v3
+#         with:
+#           fetch-depth: '0'
+#       - name: Bump version and push tag
+#         uses: anothrNick/github-tag-action@v1
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           WITH_V: true
+#           DEFAULT_BUMP: patch
           
 
 
@@ -36,12 +38,9 @@ jobs:
       run: >-
         python -m
         pip install wheel
-    - name: Extract tag name
-      id: tag
-      run: echo "tag=${GITHUB_REF#refs/*/}" >> $TAG_NAME
     - name: Update version in setup.py
       run: >-
-        sed -i "s/{{VERSION_PLACEHOLDER}}/${{ env.TAG_NAME }}/g" setup.py
+        sed -i "s/{{VERSION_PLACEHOLDER}}/${{ github.ref_name }}/g" setup.py
     - name: Build a binary wheel
       run: >-
         python setup.py sdist bdist_wheel
