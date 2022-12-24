@@ -6,9 +6,10 @@ on:
       - master
     tags:
       - 'v*.*.*'
-
+    
+jobs:
   build-n-publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI
+    name: Build and publish Python 🐍 distribution 📦 to PyPI
     needs: bump-version
     runs-on: ubuntu-18.04
     steps:
