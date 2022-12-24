@@ -38,7 +38,7 @@ jobs:
         pip install wheel
     - name: Extract tag name
       id: tag
-      run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      run: echo "tag=${GITHUB_REF#refs/*/}" >> $TAG_NAME
     - name: Update version in setup.py
       run: >-
         sed -i "s/{{VERSION_PLACEHOLDER}}/${{ steps.tag.outputs.TAG_NAME }}/g" setup.py
