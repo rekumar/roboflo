@@ -32,11 +32,3 @@ class TestHelpers(TestCase):
 
         uids = [generate_id("testname") for i in range(3)]
         self.assertEqual(len(uids), len(set(uids)), "Not generating unique id's!")
-
-    
-
-
-
-
-        
-    
