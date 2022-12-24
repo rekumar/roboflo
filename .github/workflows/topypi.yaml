@@ -7,23 +7,6 @@ on:
     tags:
       - 'v*.*.*'
 
-# jobs:
-#   bump-version:
-#     name: Bump version and push tag
-#     runs-on: ubuntu-22.04
-#     steps:
-#       - uses: actions/checkout@v3
-#         with:
-#           fetch-depth: '0'
-#       - name: Bump version and push tag
-#         uses: anothrNick/github-tag-action@v1
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#           WITH_V: true
-#           DEFAULT_BUMP: patch
-          
-
-
   build-n-publish:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
     needs: bump-version
