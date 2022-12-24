@@ -10,7 +10,6 @@ on:
 jobs:
   build-n-publish:
     name: Build and publish Python 🐍 distribution 📦 to PyPI
-    needs: bump-version
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@master
