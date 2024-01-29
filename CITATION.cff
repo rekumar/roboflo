@@ -1,0 +1,13 @@
+abstract: "A software tool to create job schedules for robotic laboratories."
+authors:
+- affiliation: UC San Diego
+  family-names: Rishi E Kumar
+cff-version: 1.2.0
+date-released: '2024-01-29'
+doi: 10.5281/zenodo.10581792
+license:
+- cc-by-4.0
+repository-code: https://github.com/rekumar/roboflo/tree/v0.2.1
+title: 'rekumar/roboflo: v0.2.1'
+type: software
+version: v0.2.1
